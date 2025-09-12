@@ -130,23 +130,44 @@ def read_procar(procar_path, atom_types, idx_ranges, orbital=('s', 'p', 'd')):
     energies = np.zeros((Nk, Nbands), dtype=float)
     proj = np.zeros((Nk, Nbands, Nelements, len(used_orbs)), dtype=float)
 
-    # 主解析循环
+    # main loop
     i = 0
     k_idx = -1
     while i < len(lines):
         line = lines[i].strip()
 
-        # k-point 行
+        # k-point line
         if line.startswith('k-point'):
-            # 例: k-point    1 :    0.50000000 0.00000000 0.00000000
-            # 使用简单 split 解析
-            tokens = line.replace(':', ' : ').split()
-            # tokens: ['k-point', '1', ':', '0.5', '0.0', '0.0']
-            k_idx = int(tokens[1]) - 1
-            kpts[k_idx, :] = [float(tokens[3]), float(tokens[4]), float(tokens[5])]
+            # 例: k-point    1 :    -0.00000000-0.00000000 0.00000000     weight = 0.00285714
+            # 兼容数字连写和可选的 weight 字段
+            # 解析 k 点索引
+            m_idx = re.search(r'k-point\s+(\d+)', line, flags=re.IGNORECASE)
+            if not m_idx:
+                raise RuntimeError(f"failed to parse k-point index from line: {line}")
+            k_idx = int(m_idx.group(1)) - 1
+
+            # 只在 'weight' 之前的子串中找坐标，避免把权重当作坐标
+            pre = line.split('weight', 1)[0]
+
+            # 先匹配带小数点/科学计数的数，避免把 '150' 这样的索引当作坐标
+            float_pat_strict = r'[-+]?(?:\d+\.\d*|\.\d+)(?:[Ee][+-]?\d+)?'
+            nums = re.findall(float_pat_strict, pre)
+
+            # 若异常情况仍少于3个，再退回到宽松匹配并取最后三个
+            if len(nums) < 3:
+                float_pat_loose = r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?'
+                nums = re.findall(float_pat_loose, pre)
+
+            if len(nums) < 3:
+                raise RuntimeError(f"failed to parse k-point coords from line: {line}")
+
+            kx_, ky_, kz_ = map(float, nums[-3:])
+            kpts[k_idx, :] = [kx_, ky_, kz_]
+
             i += 1
             continue
-        # band 行
+            
+        # band line
         if line.startswith('band'):
             # 例: band   1 # energy  -12.59193244 # occ.  2.00000000
             b_tokens = line.split()
