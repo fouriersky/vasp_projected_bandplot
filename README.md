@@ -18,7 +18,7 @@ To set up the project, clone the repository and install the required dependencie
 ```bash
 git clone https://github.com/fouriersky/vasp-bandplot.git
 conda activate env_name
-cd vasp-projected-band-plotter/
+cd vasp-bandplot/
 python -m pip install .
 ```
 ## Testing
