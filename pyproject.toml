@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vasp-bandplot"              # package name (pip install name )
+version = "0.1.0"
+description = "VASP projected band plotter"
+readme = "README.md"               
+requires-python = ">=3.8"
+dependencies = ["numpy", "matplotlib"]
+
+[tool.setuptools.packages.find]
+where = ["src"]                     # tell setuptools your package is in src/
