@@ -220,8 +220,9 @@ def plot_projected_bands(energies, data3, labels, kpts=None, channel=None,
     # 叠加能带线
     if overlay_lines:
         for b in range(E_use.shape[1]):
-            ax.plot(kx_use, Eplot[:, b], color='white', lw=0.5, alpha=0.6)
-    
+            ax.plot(kx_use, E_use[:, b], color='white', lw=0.5, alpha=0.6)
+            
+    ax.set_ylim(extent[2], extent[3])
     ax.set_xlabel("k-path")
     ax.set_ylabel("Energy (eV)")
     ax.set_title(f"Projected bands: {ch_label}")
@@ -371,6 +372,3 @@ if __name__=="__main__":
             e_window=None,
             fig_path=fig_path
         )
-
-
-    
