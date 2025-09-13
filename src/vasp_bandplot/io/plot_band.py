@@ -43,7 +43,7 @@ def _build_band_weight_image(kx, energies, weights, e_window=None, dE=0.01, widt
     """
     Nk, Nb = energies.shape
     if weights.shape != energies.shape:
-        raise ValueError("weights 形状必须与 energies 相同")
+        raise ValueError("weights.shape must be same with energies.shape !")
     if e_window is None:
         emin = float(np.nanmin(energies))
         emax = float(np.nanmax(energies))
@@ -55,27 +55,42 @@ def _build_band_weight_image(kx, energies, weights, e_window=None, dE=0.01, widt
     emin, emax = float(emin), float(emax)
 
     dE = float(dE)
-    Ny = int(np.ceil((emax - emin) / dE)) + 1
-    Egrid = np.linspace(emin, emax, Ny)
+    Ny = int(np.floor((emax - emin) / dE)) + 1
+    Egrid = emin + dE * np.arange(Ny, dtype=float)
     img = np.zeros((Ny, Nk), dtype=float)
 
-    half_bins = max(1, int(round(width_ev / dE / 2.0)))
+    half_w = 0.5 * float(width_ev)
 
     for b in range(Nb):
         Ek = energies[:, b]
         Wk = weights[:, b]
-        # 将能量映射到栅格索引
-        j = np.clip(np.round((Ek - emin) / dE).astype(int), 0, Ny - 1)
         for k in range(Nk):
             w = float(Wk[k])
-            if not np.isfinite(w) or w <= 0.0:
+            Ekb = float(Ek[k])
+            if not np.isfinite(w) or w <= 0.0 or not np.isfinite(Ekb):
                 continue
-            jl = max(0, j[k] - half_bins)
-            jr = min(Ny, j[k] + half_bins + 1)
+
+            # 条带区间与窗口相交部分
+            lo = Ekb - half_w
+            hi = Ekb + half_w
+            if hi <= emin or lo >= emax:
+                continue  # 无相交，跳过
+
+            lo_clamp = max(lo, emin)
+            hi_clamp = min(hi, emax)
+
+            # 将相交区间映射到索引（含端点）
+            jl = int(np.floor((lo_clamp - emin) / dE))
+            jr = int(np.floor((hi_clamp - emin) / dE))
+            if jr < 0 or jl > Ny - 1:
+                continue
+            jl = max(0, jl)
+            jr = min(Ny - 1, jr)
+
             if agg == 'max':
-                img[jl:jr, k] = np.maximum(img[jl:jr, k], w)
+                img[jl:jr+1, k] = np.maximum(img[jl:jr+1, k], w)
             else:  # 'sum'
-                img[jl:jr, k] += w
+                img[jl:jr+1, k] += w
 
     extent = (float(kx.min()), float(kx.max()), emin, emax)
     return img, extent, Egrid
@@ -186,13 +201,6 @@ def plot_projected_bands(energies, data3, labels, kpts=None, channel=None,
     img = np.clip(img, 0.0, float(weight_vmax))
 
     # 绘图
-    imax = float(np.nanmax(img))
-    if np.isfinite(imax) and imax > 0:
-        img = img / imax
-    else:
-        img = np.zeros_like(img)
-
-    # 绘图
     created_fig = False
     if ax is None:
         fig, ax = plt.subplots(figsize=(6.4, 4.8), dpi=120)
@@ -211,8 +219,8 @@ def plot_projected_bands(energies, data3, labels, kpts=None, channel=None,
 
     # 叠加能带线
     if overlay_lines:
-        for b in range(Nb):
-            ax.plot(kx, Eplot[:, b], color='k', lw=0.5, alpha=0.6)
+        for b in range(E_use.shape[1]):
+            ax.plot(kx_use, Eplot[:, b], color='white', lw=0.5, alpha=0.6)
     
     ax.set_xlabel("k-path")
     ax.set_ylabel("Energy (eV)")
