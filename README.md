@@ -16,7 +16,7 @@ This project is designed to visualize band structures from VASP calculations, us
 To set up the project, clone the repository and install the required dependencies:
 
 ```bash
-git clone https://github.com/fouriersky/vasp-bandplot.git
+git clone https://github.com/fouriersky/vasp_projected_bandplot.git
 conda activate env_name
 cd vasp-bandplot/
 python -m pip install .
